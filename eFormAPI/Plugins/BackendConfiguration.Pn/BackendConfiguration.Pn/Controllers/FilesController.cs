@@ -109,11 +109,16 @@ public class FilesController : Controller
 		var core = await _coreHelper.GetCore();
 		var uploadedData = await _backendConfigurationFilesService.GetUploadedDataByFileId(id);
 
-		var ss = await core.GetFileFromS3Storage($"{uploadedData.Checksum}.pdf");
+		var ss = await core.GetFileFromS3Storage($"{uploadedData.Checksum}.{uploadedData.Extension}");
 
 		if (ss != null)
 		{
-			return File(ss.ResponseStream, "application/pdf", uploadedData.FileName);
+			if (uploadedData.Extension == "pdf")
+			{
+				return File(ss.ResponseStream, "application/pdf", uploadedData.FileName);
+			}
+
+			return File(ss.ResponseStream, $"image/{uploadedData.Extension}", uploadedData.FileName);
 		}
 		return new NotFoundResult();
 	}
@@ -131,9 +136,9 @@ public class FilesController : Controller
 				foreach (var fileId in model.FileIds)
 				{
 					var uploadedData = await _backendConfigurationFilesService.GetUploadedDataByFileId(fileId);
-					var ss = await core.GetFileFromS3Storage($"{uploadedData.Checksum}.pdf");
+					var ss = await core.GetFileFromS3Storage($"{uploadedData.Checksum}.{uploadedData.Extension}");
 					var operationDataResult = await _backendConfigurationFilesService.GetById(fileId);
-					var zipArchiveEntry = archive.CreateEntry($"{operationDataResult.Model.FileName}.pdf",
+					var zipArchiveEntry = archive.CreateEntry($"{operationDataResult.Model.FileName}.{uploadedData.Extension}",
 						CompressionLevel.Fastest);
 					await using var zipStream = zipArchiveEntry.Open();
 					await ss.ResponseStream.CopyToAsync(zipStream);
